@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Змейка: Кабина «Зимус»</title>
+  <style>
+    :root {
+      --panel-dark: #0b1120;
+      --panel-mid: #152136;
+      --panel-light: #2b3a55;
+      --ice-blue: #5fa8d3;
+      --frost-blue: #8fc8ff;
+      --snake-body: #4fa3d0;
+      --snake-head: #2a7bbf;
+      --apple: #ff5e5e;
+      --text: #eef2f7;
+      --btn: #3b82f6;
+      --danger: #ef4444;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: #080c18;
+      color: var(--text);
+      font-family: system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Эффект «кабина» с вьюгой за стеклом */
+    .cabin-frame {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .snow-layer {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background-image:
+        radial-gradient(white, rgba(255,255,255,0) 1px),
+        radial-gradient(white, rgba(255,255,255,0) 2px),
+        radial-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0) 5px);
+      background-size: 300px 300px, 200px 200px, 100px 100px;
+      animation: snow-fall 8s linear infinite;
+      opacity: 0.4;
+    }
+    @keyframes snow-fall {
+      0% { transform: translateY(-100%) translateX(0); }
+      100% { transform: translateY(100%) translateX(40px); }
+    }
+
+    h1 {
+      margin: 0 0 12px 0;
+      text-align: center;
+      font-weight: 600;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+      z-index: 2;
+      position: relative;
+    }
+
+    #game-container {
+      position: relative;
+      box-shadow:
+        0 10px 40px rgba(0, 0, 0, 0.5),
+        inset 0 0 30px rgba(43, 58, 85, 0.6);
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(11, 17, 32, 0.92);
+      border: 1px solid #3b4a66;
+      outline: 2px solid #1a2a44; /* Ровные технические грани */
+      max-width: 420px;
+      width: 92%;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 400px;
+      image-rendering: pixelated;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .panel {
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+      backdrop-filter: blur(6px);
+      background: rgba(21, 33, 54, 0.85);
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid #2b3a55;
+      margin-bottom: 12px;
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+    }
+
+    .stats { font-size: 1.1rem; margin-bottom: 14px; letter-spacing: 0.5px; }
+    .speed-block {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      justify-content: center;
+    }
+    input[type="range"] { width: 200px; accent-color: #3b82f6; }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      background: var(--btn);
+      color: white;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+      transition: transform 0.05s, box-shadow 0.1s;
+    }
+    button:active { transform: scale(0.96); }
+    button.stop { background: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35); }
+
+    #over-screen {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(8, 12, 24, 0.94);
+      backdrop-filter: blur(12px);
+      padding: 28px;
+      border-radius: 12px;
+      text-align: center;
+      display: none;
+      min-width: 260px;
+      border: 1px solid #4fa3d0;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      color: white;
+    }
+    #restart-btn { background: #22c55e; color: white; box-shadow: none; }
+
+    .mobile-controls {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+      z-index: 10;
+    }
+    .d-pad {
+      pointer-events: auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
+      width: 170px; height: 170px;
+      aspect-ratio: 1/1;
+      background: rgba(30, 45, 70, 0.7);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #3b4a66;
+      box-shadow: inset 0 2px 12px rgba(0,0,0,0.4);
+    }
+    .d-pad button {
+      border: none;
+      background: rgba(255,255,255,0.1);
+      color: var(--frost-blue);
+      font-weight: bold;
+      font-size: 1.4rem;
+      transition: all 0.08s;
+    }
+    .d-pad button:active {
+      background: rgba(255,255,255,0.25);
+      transform: scale(0.94);
+      color: #ffffff;
+    }
+    .btn-up { grid-area: 1 / 2 / 2 / 3; }
+    .btn-down { grid-area: 3 / 2 / 4 / 3; }
+    .btn-left { grid-area: 2 / 1 / 3 / 2; }
+    .btn-right { grid-area: 2 / 3 / 3 / 4; }
+  </style>
+</head>
+<body>
+  <div class="cabin-frame">
+    <div class="snow-layer"></div>
+  </div>
+
+  <h1>❄️ Кабина «Зимус»</h1>
+
+  <div class="panel">
+    <div class="stats">
+      Счёт: <span id="score">0</span> | Рекорд: <span id="highscore">0</span>
+    </div>
+    <div class="speed-block">
+      <span style="color:#aaa">Скорость:</span>
+      <input type="range" id="speedRange" min="1" max="10" value="2" />
+      <span id="speedValue">2</span>
+    </div>
+    <div class="buttons">
+      <button id="startBtn">▶ Старт</button>
+      <button class="stop" id="stopBtn">⏹ Стоп</button>
+    </div>
+  </div>
+
+  <div id="game-container">
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div id="over-screen">
+      <h2>Связь потеряна</h2>
+      <p>Счёт: <span id="finalScore">0</span></p>
+      <br>
+      <button id="restart-btn">🔄 Восстановить связь</button>
+    </div>
+  </div>
+
+  <div class="mobile-controls">
+    <div class="d-pad">
+      <button class="btn-up" data-dir="up">↑</button>
+      <button class="btn-down" data-dir="down">↓</button>
+      <button class="btn-left" data-dir="left">←</button>
+      <button class="btn-right" data-dir="right">→</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const highscoreEl = document.getElementById('highscore');
+    const speedRange = document.getElementById('speedRange');
+    const speedValueEl = document.getElementById('speedValue');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const overScreen = document.getElementById('over-screen');
+    const finalScoreEl = document.getElementById('finalScore');
+    const restartBtn = document.getElementById('restart-btn');
+    const dPadButtons = document.querySelectorAll('.d-pad button');
+
+    let gridSize = 20;
+    let tileCount = canvas.width / gridSize;
+    let snake = [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }];
+    let apple = { x: 15, y: 15 };
+    let dx = 1, dy = 0;
+    let nextDx = dx, nextDy = dy;
+    let score = 0;
+    let highscore = Number(localStorage.getItem('winterSnakeHighscore') || 0);
+    highscoreEl.textContent = highscore;
+
+    let gameInterval;
+    let isGameRunning = false;
+    const baseDelay = 160;
+
+    function updateSpeed() {
+      const speed = parseInt(speedRange.value, 10);
+      speedValueEl.textContent = speed;
+      const delay = baseDelay * (11 - speed) / 10;
+      if (isGameRunning) {
+        clearInterval(gameInterval);
+        gameInterval = setInterval(gameLoop, delay);
+      }
+    }
+    speedRange.addEventListener('input', updateSpeed);
+
+    function resetGame() {
+      snake = [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }];
+      apple = {
+        x: Math.floor(Math.random() * tileCount),
+        y: Math.floor(Math.random() * tileCount)
+      };
+      dx = 1; dy = 0; nextDx = 1; nextDy = 0;
+      score = 0; scoreEl.textContent = score;
+      overScreen.style.display = 'none';
+    }
+
+    function spawnApple() {
+      do {
+        apple.x = Math.floor(Math.random() * tileCount);
+        apple.y = Math.floor(Math.random() * tileCount);
+      } while (snake.some(seg => seg.x === apple.x && seg.y === apple.y));
+    }
+
+    function checkCollision() {
+      if (snake[0].x < 0 || snake[0].x >= tileCount || snake[0].y < 0 || snake[0].y >= tileCount) {
+        endGame(); return true;
+      }
+      for (let i = 1; i < snake.length; i++) {
+        if (snake[0].x === snake[i].x && snake[0].y === snake[i].y) {
+          endGame(); return true;
+        }
+      }
+      return false;
+    }
+
+    function endGame() {
+      isGameRunning = false;
+      clearInterval(gameInterval);
+      finalScoreEl.textContent = score;
+      overScreen.style.display = 'block';
+      if (score > highscore) {
+        highscore = score;
+        localStorage.setItem('winterSnakeHighscore', highscore);
+        highscoreEl.textContent = highscore;
+      }
+    }
+
+    function gameLoop() {
+      dx = nextDx; dy = nextDy;
+      const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+      snake.unshift(head);
+      if (head.x === apple.x && head.y === apple.y) {
+        score += 10; scoreEl.textContent = score;
+        spawnApple();
+      } else {
+        snake.pop();
+      }
+      checkCollision();
+      draw();
+    }
+
+    function draw() {
+      ctx.fillStyle = 'rgba(11, 17, 32, 0.9)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Тонкая сетка «морозных линий»
+      ctx.strokeStyle = 'rgba(63, 119, 205, 0.15)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= canvas.width; x += gridSize) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y <= canvas.height; y += gridSize) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
+      snake.forEach((seg, idx) => {
+        ctx.fillStyle = (idx === 0) ? '#2a7bbf' : '#4fa3d0';
+        ctx.fillRect(seg.x * gridSize + 1, seg.y * gridSize + 1, gridSize - 2, gridSize - 2);
+        // Лёгкий «морозный» контур у сегментов
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(seg.x * gridSize + 1, seg.y * gridSize + 1, gridSize
+ - 2, gridSize - 2);
+      });
+
+      ctx.fillStyle = '#ff5e5e';
+      ctx.fillRect(apple.x * gridSize + 2, apple.y * gridSize + 2, gridSize - 4, gridSize - 4);
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(apple.x * gridSize + 2, apple.y * gridSize + 2, gridSize - 4, gridSize - 4);
+    }
+
+    function setDirection(dir) {
+      if (!isGameRunning) return;
+      switch (dir) {
+        case 'up': if (dy !== 1) { nextDx = 0; nextDy = -1; } break;
+        case 'down': if (dy !== -1) { nextDx = 0; nextDy = 1; } break;
+        case 'left': if (dx !== 1) { nextDx = -1; nextDy = 0; } break;
+        case 'right': if (dx !== -1) { nextDx = 1; nextDy = 0; } break;
+      }
+    }
+
+    document.addEventListener('keydown', e => {
+      switch (e.key) {
+        case 'ArrowUp': setDirection('up'); break;
+        case 'ArrowDown': setDirection('down'); break;
+        case 'ArrowLeft': setDirection('left'); break;
+        case 'ArrowRight': setDirection('right'); break;
+        case ' ': if (isGameRunning) stopGame(); else startGame(); break;
+      }
+    });
+
+    dPadButtons.forEach(btn => {
+      btn.addEventListener('click', () => setDirection(btn.getAttribute('data-dir')));
+    });
+
+    function startGame() {
+      if (isGameRunning) return;
+      isGameRunning = true;
+      const speed = parseInt(speedRange.value, 10);
+      const delay = baseDelay * (11 - speed) / 10;
+      gameInterval = setInterval(gameLoop, delay);
+      overScreen.style.display = 'none';
+    }
+
+    function stopGame() {
+      isGameRunning = false;
+      clearInterval(gameInterval);
+    }
+
+    startBtn.addEventListener('click', startGame);
+    stopBtn.addEventListener('click', stopGame);
+    restartBtn.addEventListener('click', () => { resetGame(); startGame(); });
+    updateSpeed();
+  </script>
+</body>
+</html>
